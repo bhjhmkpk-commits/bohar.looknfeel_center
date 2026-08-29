@@ -37,8 +37,8 @@ Panel {
   property string customBgColor:  "default"  // default | #000000 | #11111b | #1a1b26 ...
   property real   barOpacity:     0.85       // 0.00 to 1.00
   property string wallpaperCycle: "Off"      // Off | 30s | 1m | 5m | 10m | 18m | 30m
-  property int    systemFontSize: Style.font.baseSize || 12 // 8 to 22
-  property int    terminalFontSize: 11 // 8 to 20
+  property string barStyle:       "islands"  // islands | bar
+  readonly property bool isIslandBar: root.barStyle === "islands" || (root.bar && (root.bar.moduleName === "my_floating_bar" || root.bar.moduleName === "custom.island-bar" || root.bar.moduleName === "bohar.island_bar"))
   readonly property color effectiveForeground: root.bar ? root.bar.foreground : Color.foreground
   readonly property string pluginDir: Qt.resolvedUrl(".").toString().replace(/^file:\/\//, "")
   readonly property string scriptDir: pluginDir + "/scripts"
@@ -101,6 +101,8 @@ Panel {
             root.windowOpacity = l.replace("WINDOW_OPACITY=", "").replace(/\"/g, "")
           else if (l.indexOf("BG_COLOR=") === 0)
             root.customBgColor = l.replace("BG_COLOR=", "").replace(/\"/g, "")
+          else if (l === "islands" || l === "bar")
+            root.barStyle = l
           else if (l.match(/^[0-9]+$/) && parseInt(l, 10) >= 8 && parseInt(l, 10) <= 24) {
             root.terminalFontSize = parseInt(l, 10)
           }
@@ -666,9 +668,10 @@ Panel {
         }
       }
 
-      // ── Bar Island Transparency Level (Stepped Cards) ───────────────────────
+      // ── Bar Island Transparency Level (Stepped Cards - Dynamic) ─────────────
       Column {
         width: parent.width; spacing: Style.space(6)
+        visible: root.isIslandBar
 
         Item {
           width: parent.width; height: Style.space(16)
