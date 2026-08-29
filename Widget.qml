@@ -49,16 +49,27 @@ Panel {
   Process {
     id: stateProc
     command: ["bash", "-c",
-      "cat \"$HOME\"/.local/state/omarchy/blur-opacity-state.env 2>/dev/null || echo ''; cat \"$HOME\"/.config/xdg-terminals.list 2>/dev/null || echo ''; grep -oP 'base-size\\s*=\\s*\\K[0-9]+' \"$HOME\"/.config/omarchy/shell.toml 2>/dev/null || echo ''; omarchy-wallpaper-rotate-status 2>/dev/null || echo 'Off'; custom-omarchy-terminal-font-size 2>/dev/null || echo '11'; cat \"$HOME\"/.local/state/omarchy/toggles/bar-style 2>/dev/null || echo 'islands'"]
+      "cat \"$HOME\"/.local/state/omarchy/blur-opacity-state.env 2>/dev/null || echo ''; echo '---TERM---'; if [[ -f \"$HOME/.config/xdg-terminals.list\" && -s \"$HOME/.config/xdg-terminals.list\" ]]; then head -n 1 \"$HOME/.config/xdg-terminals.list\"; elif pgrep -x ghostty >/dev/null 2>&1; then echo 'ghostty'; elif pgrep -x foot >/dev/null 2>&1; then echo 'foot'; elif command -v ghostty >/dev/null 2>&1; then echo 'ghostty'; elif command -v foot >/dev/null 2>&1; then echo 'foot'; else echo 'foot'; fi; grep -oP 'base-size\\s*=\\s*\\K[0-9]+' \"$HOME\"/.config/omarchy/shell.toml 2>/dev/null || echo ''; omarchy-wallpaper-rotate-status 2>/dev/null || echo 'Off'; custom-omarchy-terminal-font-size 2>/dev/null || echo '11'; cat \"$HOME\"/.local/state/omarchy/toggles/bar-style 2>/dev/null || echo 'islands'"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
         var lines = String(text || "").split("\n")
+        var inTermSection = false
         for (var i = 0; i < lines.length; i++) {
           var l = lines[i].trim()
-          if (l.indexOf("ghostty") >= 0) root.activeTerminal = "ghostty"
-          else if (l.indexOf("foot") >= 0) root.activeTerminal = "foot"
-          else if (l.match(/^(off|30s|1m|5m|10m|18m|30m)$/i)) root.wallpaperCycle = l.toLowerCase()
+          if (l === "---TERM---") {
+            inTermSection = true
+            continue
+          }
+          if (inTermSection) {
+            inTermSection = false
+            if (l.indexOf("ghostty") >= 0) root.activeTerminal = "ghostty"
+            else if (l.indexOf("foot") >= 0) root.activeTerminal = "foot"
+            else if (l.indexOf("alacritty") >= 0) root.activeTerminal = "alacritty"
+            else if (l.indexOf("kitty") >= 0) root.activeTerminal = "kitty"
+            continue
+          }
+          if (l.match(/^(off|30s|1m|5m|10m|18m|30m)$/i)) root.wallpaperCycle = l.toLowerCase()
           else if (l.match(/^[0-9]+$/)) {
             var f = parseInt(l, 10)
             if (f >= 8 && f <= 24) root.systemFontSize = f
@@ -81,6 +92,9 @@ Panel {
           else if (l.match(/^[0-9]+$/) && parseInt(l, 10) >= 8 && parseInt(l, 10) <= 24) {
             root.terminalFontSize = parseInt(l, 10)
           }
+        }
+        if (root.activeTerminal === "foot" && root.glassMode === "blur") {
+          root.glassMode = "clear"
         }
       }
     }
@@ -369,7 +383,7 @@ Panel {
       // ── Frosted Blur Intensity ──────────────────────────────────────────────
       Column {
         width: parent.width; spacing: Style.space(6)
-        visible: root.glassMode === "blur"
+        visible: root.glassMode === "blur" && root.activeTerminal !== "foot"
 
         Item {
           width: parent.width; height: Style.space(16)
