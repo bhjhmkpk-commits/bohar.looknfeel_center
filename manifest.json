@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "bohar.looknfeel_center",
+  "name": "Looknfeel Center",
+  "version": "1.0.0",
+  "author": "Bohar",
+  "description": "Custom Bar Widget",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Widget.qml"
+  },
+  "barWidget": {
+    "displayName": "Looknfeel Center",
+    "description": "Custom Bar Widget",
+    "category": "Custom",
+    "allowMultiple": false
+  }
+}
