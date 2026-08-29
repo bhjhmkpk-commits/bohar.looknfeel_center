@@ -351,7 +351,7 @@ Panel {
         }
       }
 
-      // ── Glass Opacity Slider ────────────────────────────────────────────────
+      // ── Glass Opacity Selector (Stepped Cards) ──────────────────────────────
       Column {
         width: parent.width; spacing: Style.space(6)
         visible: root.glassMode !== "opaque"
@@ -374,41 +374,48 @@ Panel {
           }
         }
 
-        PanelSlider {
-          width: parent.width; bar: root.bar
-          minimum: 0.10; maximum: 1.00; step: 0.05
-          value: root.bgOpacity
-          onMoved: function(v) { root.bgOpacity = Math.round(v * 100) / 100 }
-          onReleased: function(v) {
-            var val = (Math.round(v * 100) / 100).toFixed(2)
-            root.applyCommand("omarchy-blur-opacity set-bg-opacity " + val)
-          }
-        }
-
-        // Quick Preset Opacity Badges
-        Row {
-          width: parent.width; spacing: Style.space(4)
+        Grid {
+          width: parent.width; columns: 4; spacing: Style.space(6)
           Repeater {
             model: [
-              { val: 0.20, label: "20%" },
-              { val: 0.35, label: "35%" },
-              { val: 0.50, label: "50%" },
-              { val: 0.70, label: "70%" },
-              { val: 0.85, label: "85%" },
-              { val: 1.00, label: "100%" }
+              { val: 0.15, label: "15%", sub: "Ghost" },
+              { val: 0.30, label: "30%", sub: "Subtle" },
+              { val: 0.45, label: "45%", sub: "Medium" },
+              { val: 0.60, label: "60%", sub: "Rich" },
+              { val: 0.75, label: "75%", sub: "Heavy" },
+              { val: 0.85, label: "85%", sub: "Dark" },
+              { val: 0.95, label: "95%", sub: "Near-Solid" },
+              { val: 1.00, label: "100%", sub: "Solid" }
             ]
             delegate: BorderSurface {
-              width: (parent.width - Style.space(20)) / 6; height: Style.space(22)
+              width: (parent.width - Style.space(18)) / 4; height: Style.space(36)
               radius: Style.cornerRadius
-              color: Math.abs(root.bgOpacity - modelData.val) < 0.03 ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : "transparent"
-              borderSpec: Border.controlSpec(Math.abs(root.bgOpacity - modelData.val) < 0.03 ? "selected" : "normal", root.bar.foreground, Color.accent)
-              Text {
-                anchors.centerIn: parent
-                text: modelData.label
-                font.pixelSize: Style.font.caption - 1
-                color: Math.abs(root.bgOpacity - modelData.val) < 0.03 ? Color.accent : Color.muted
-                font.bold: Math.abs(root.bgOpacity - modelData.val) < 0.03
+              color: Math.abs(root.bgOpacity - modelData.val) < 0.05
+                ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22)
+                : "transparent"
+              borderSpec: Border.controlSpec(
+                Math.abs(root.bgOpacity - modelData.val) < 0.05 ? "selected" : "normal",
+                root.bar.foreground,
+                Color.accent
+              )
+
+              Column {
+                anchors.centerIn: parent; spacing: 1
+                Text {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: modelData.label
+                  font.pixelSize: Style.font.caption
+                  color: Math.abs(root.bgOpacity - modelData.val) < 0.05 ? Color.accent : Color.popups.text
+                  font.bold: true
+                }
+                Text {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: modelData.sub
+                  font.pixelSize: Style.font.caption - 3
+                  color: Math.abs(root.bgOpacity - modelData.val) < 0.05 ? Color.accent : Color.muted
+                }
               }
+
               MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                 onClicked: {
@@ -443,7 +450,7 @@ Panel {
               { size: 16, label: "Deep (16px)" }
             ]
             delegate: BorderSurface {
-              width: (parent.width - Style.space(12)) / 3; height: Style.space(26)
+              width: (parent.width - Style.space(18)) / 4; height: Style.space(26)
               radius: Style.cornerRadius
               color: root.blurSize === modelData.size ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : "transparent"
               borderSpec: Border.controlSpec(root.blurSize === modelData.size ? "selected" : "normal", root.bar.foreground, Color.accent)
@@ -656,7 +663,7 @@ Panel {
         }
       }
 
-      // ── Bar Island Transparency Level ───────────────────────────────────────
+      // ── Bar Island Transparency Level (Stepped Cards) ───────────────────────
       Column {
         width: parent.width; spacing: Style.space(6)
 
@@ -678,44 +685,46 @@ Panel {
           }
         }
 
-        PanelSlider {
-          width: parent.width; bar: root.bar
-          minimum: 0.00; maximum: 1.00; step: 0.05
-          value: root.barOpacity
-          onMoved: function(v) {
-            root.barOpacity = Math.round(v * 100) / 100
-          }
-          onReleased: function(v) {
-            var val = (Math.round(v * 100) / 100).toFixed(2)
-            root.barOpacity = parseFloat(val)
-            root.applyCommand("omarchy-blur-opacity set-bar-opacity " + val)
-          }
-        }
-
-        // Quick Preset Bar Opacity Badges
-        Row {
-          width: parent.width; spacing: Style.space(4)
+        Grid {
+          width: parent.width; columns: 3; spacing: Style.space(6)
           Repeater {
             model: [
-              { val: 0.00, label: "Glass" },
-              { val: 0.25, label: "25%" },
-              { val: 0.50, label: "50%" },
-              { val: 0.75, label: "75%" },
-              { val: 0.85, label: "85%" },
-              { val: 1.00, label: "Solid" }
+              { val: 0.00, label: "Full Glass", sub: "0% Clear" },
+              { val: 0.15, label: "Ultra Glass", sub: "15% Tint" },
+              { val: 0.35, label: "Translucent", sub: "35% Tint" },
+              { val: 0.55, label: "Semi Glass", sub: "55% Tint" },
+              { val: 0.85, label: "Frosted Bar", sub: "85% Tint" },
+              { val: 1.00, label: "Solid Bar", sub: "100% Solid" }
             ]
             delegate: BorderSurface {
-              width: (parent.width - Style.space(20)) / 6; height: Style.space(22)
+              width: (parent.width - Style.space(12)) / 3; height: Style.space(38)
               radius: Style.cornerRadius
-              color: Math.abs(root.barOpacity - modelData.val) < 0.03 ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : "transparent"
-              borderSpec: Border.controlSpec(Math.abs(root.barOpacity - modelData.val) < 0.03 ? "selected" : "normal", root.bar.foreground, Color.accent)
-              Text {
-                anchors.centerIn: parent
-                text: modelData.label
-                font.pixelSize: Style.font.caption - 1
-                color: Math.abs(root.barOpacity - modelData.val) < 0.03 ? Color.accent : Color.muted
-                font.bold: Math.abs(root.barOpacity - modelData.val) < 0.03
+              color: Math.abs(root.barOpacity - modelData.val) < 0.06
+                ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22)
+                : "transparent"
+              borderSpec: Border.controlSpec(
+                Math.abs(root.barOpacity - modelData.val) < 0.06 ? "selected" : "normal",
+                root.bar.foreground,
+                Color.accent
+              )
+
+              Column {
+                anchors.centerIn: parent; spacing: 1
+                Text {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: modelData.label
+                  font.pixelSize: Style.font.caption - 1
+                  color: Math.abs(root.barOpacity - modelData.val) < 0.06 ? Color.accent : Color.popups.text
+                  font.bold: true
+                }
+                Text {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: modelData.sub
+                  font.pixelSize: Style.font.caption - 3
+                  color: Math.abs(root.barOpacity - modelData.val) < 0.06 ? Color.accent : Color.muted
+                }
               }
+
               MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                 onClicked: {
@@ -727,7 +736,7 @@ Panel {
           }
         }
 
-        // Bottom spacer to ensure slider knob is fully clear of panel bottom boundary
+        // Bottom spacer to ensure panel bottom boundary has breathing space
         Item {
           width: parent.width
           height: Style.space(16)
