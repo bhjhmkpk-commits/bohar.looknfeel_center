@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Configure and run wallpaper rotation reliably
+
+
+source ~/.local/lib/omarchy-user-env.sh
+
+set -euo pipefail
+
+interval="${1:-}"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-wallpaper"
+interval_file="$state_dir/interval"
+
+mkdir -p "$state_dir"
+
+case "$interval" in
+  off)
+    printf 'off\n' > "$interval_file"
+    systemctl --user stop omarchy-wallpaper-daemon.service >/dev/null 2>&1 || true
+    systemctl --user disable omarchy-wallpaper-daemon.service >/dev/null 2>&1 || true
+    notify-send -u low "Wallpaper rotation" "Automatic wallpaper rotation disabled" >/dev/null 2>&1 || true
+    exit 0
+    ;;
+  30s|1m|5m|10m|18m|30m)
+    printf '%s\n' "$interval" > "$interval_file"
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user enable --now omarchy-wallpaper-daemon.service >/dev/null 2>&1 || true
+    systemctl --user restart omarchy-wallpaper-daemon.service >/dev/null 2>&1 || true
+    notify-send -u low "Wallpaper rotation" "Automatic wallpaper rotation set to $interval" >/dev/null 2>&1 || true
+    exit 0
+    ;;
+  *)
+    echo "Usage: omarchy-wallpaper-rotate-set {off|30s|1m|5m|10m|18m|30m}" >&2
+    exit 1
+    ;;
+esac

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+
+source ~/.local/lib/omarchy-user-env.sh
+
+set -euo pipefail
+
+interval_file="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-wallpaper/interval"
+value="$(cat "$interval_file" 2>/dev/null || echo "off")"
+
+case "$value" in
+  off|30s|1m|5m|10m|18m|30m)
+    echo "$value"
+    ;;
+  *)
+    echo "off"
+    ;;
+esac

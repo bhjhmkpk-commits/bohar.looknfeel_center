@@ -40,6 +40,8 @@ Panel {
   property int    systemFontSize: Style.font.baseSize || 12 // 8 to 22
   property int    terminalFontSize: 11 // 8 to 20
   readonly property color effectiveForeground: root.bar ? root.bar.foreground : Color.foreground
+  readonly property string pluginDir: Qt.resolvedUrl(".").toString().replace(/^file:\/\//, "")
+  readonly property string scriptDir: pluginDir + "/scripts"
 
   // ── Polling & State Refresh (Zero continuous CPU overhead) ──────────────────
   Timer {
@@ -59,7 +61,7 @@ Panel {
   Process {
     id: stateProc
     command: ["bash", "-c",
-      "cat \"$HOME\"/.local/state/omarchy/blur-opacity-state.env 2>/dev/null || echo ''; echo '---TERM---'; if [[ -f \"$HOME/.config/xdg-terminals.list\" && -s \"$HOME/.config/xdg-terminals.list\" ]]; then head -n 1 \"$HOME/.config/xdg-terminals.list\"; elif pgrep -x ghostty >/dev/null 2>&1; then echo 'ghostty'; elif pgrep -x foot >/dev/null 2>&1; then echo 'foot'; elif command -v ghostty >/dev/null 2>&1; then echo 'ghostty'; elif command -v foot >/dev/null 2>&1; then echo 'foot'; else echo 'foot'; fi; grep -oP 'base-size\\s*=\\s*\\K[0-9]+' \"$HOME\"/.config/omarchy/shell.toml 2>/dev/null || echo ''; omarchy-wallpaper-rotate-status 2>/dev/null || echo 'Off'; custom-omarchy-terminal-font-size 2>/dev/null || echo '11'; cat \"$HOME\"/.local/state/omarchy/toggles/bar-style 2>/dev/null || echo 'islands'"]
+      "export PATH=\"" + root.scriptDir + ":$HOME/.local/bin:$PATH\"; cat \"$HOME\"/.local/state/omarchy/blur-opacity-state.env 2>/dev/null || echo ''; echo '---TERM---'; if [[ -f \"$HOME/.config/xdg-terminals.list\" ]]; then grep -v '^[[:space:]]*#' \"$HOME/.config/xdg-terminals.list\" 2>/dev/null | grep -v '^[[:space:]]*$' | head -n 1; elif pgrep -x ghostty >/dev/null 2>&1; then echo 'ghostty'; elif pgrep -x foot >/dev/null 2>&1; then echo 'foot'; elif command -v ghostty >/dev/null 2>&1; then echo 'ghostty'; elif command -v foot >/dev/null 2>&1; then echo 'foot'; else echo 'foot'; fi; grep -oP 'base-size\\s*=\\s*\\K[0-9]+' \"$HOME\"/.config/omarchy/shell.toml 2>/dev/null || echo ''; omarchy-wallpaper-rotate-status 2>/dev/null || echo 'Off'; custom-omarchy-terminal-font-size 2>/dev/null || echo '11'; cat \"$HOME\"/.local/state/omarchy/toggles/bar-style 2>/dev/null || echo 'islands'"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -122,7 +124,7 @@ Panel {
   }
 
   function applyCommand(cmd) {
-    execProc.command = ["bash", "-c", cmd]
+    execProc.command = ["bash", "-c", "export PATH=\"" + root.scriptDir + ":$HOME/.local/bin:$PATH\"; " + cmd]
     if (!execProc.running) execProc.running = true
   }
 

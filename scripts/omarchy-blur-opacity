@@ -1,0 +1,377 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Omarchy Blur, Window Opacity, Bar Island Opacity, Terminal & Palette Manager
+# Production Hardened Edition (Atomic I/O, Safe Input Validation & IPC Dispatch)
+# ==============================================================================
+
+
+source ~/.local/lib/omarchy-user-env.sh
+
+set -euo pipefail
+
+STATE_FILE="$HOME/.local/state/omarchy/blur-opacity-state.env"
+HYPR_BLUR_CONF="$HOME/.config/hypr/blur-opacity.conf"
+HYPR_TOGGLE_CONF="$HOME/.local/state/omarchy/toggles/hypr/blur-opacity.conf"
+HYPR_TOGGLE_LUA="$HOME/.local/state/omarchy/toggles/hypr/blur-opacity.lua"
+GHOSTTY_TOGGLE_CONF="$HOME/.local/state/omarchy/toggles/ghostty.conf"
+FOOT_TOGGLE_CONF="$HOME/.local/state/omarchy/toggles/foot.ini"
+ALACRITTY_TOGGLE_CONF="$HOME/.local/state/omarchy/toggles/alacritty.toml"
+KITTY_TOGGLE_CONF="$HOME/.local/state/omarchy/toggles/kitty.conf"
+
+# Defaults
+MODE="blur"
+BLUR_SIZE="8"
+BG_OPACITY="0.50"
+WINDOW_OPACITY="solid"
+BG_COLOR="default"
+BAR_PALETTE="default"
+BAR_OPACITY="0.15"
+
+# Load existing state if available
+if [[ -f "$STATE_FILE" ]]; then
+  source "$STATE_FILE" 2>/dev/null || true
+fi
+
+clamp_num() {
+  local val="$1" min="$2" max="$3"
+  python3 -c "print(max($min, min($max, float('$val'))))" 2>/dev/null || echo "$min"
+}
+
+save_state() {
+  mkdir -p "$(dirname "$STATE_FILE")"
+  cat > "$STATE_FILE" <<EOF
+MODE="${MODE:-blur}"
+BLUR_SIZE="${BLUR_SIZE:-8}"
+BG_OPACITY="${BG_OPACITY:-0.50}"
+WINDOW_OPACITY="${WINDOW_OPACITY:-solid}"
+BG_COLOR="${BG_COLOR:-default}"
+BAR_PALETTE="${BAR_PALETTE:-default}"
+BAR_OPACITY="${BAR_OPACITY:-0.15}"
+EOF
+}
+
+update_terminals() {
+  local cur_mode="${MODE:-blur}"
+  local cur_opacity="${BG_OPACITY:-0.50}"
+  local cur_bg_color="${BG_COLOR:-default}"
+
+  mkdir -p "$(dirname "$GHOSTTY_TOGGLE_CONF")"
+
+  # Determine background color override if any
+  local custom_hex=""
+  local foot_bg_override=""
+  local ghostty_bg_override=""
+  local kitty_bg_override=""
+  local alacritty_bg_override=""
+
+  if [[ "$cur_bg_color" != "default" && "$cur_bg_color" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+    custom_hex="$cur_bg_color"
+    ghostty_bg_override="background = ${custom_hex}"
+    foot_bg_override="background=${custom_hex#\#}"
+    kitty_bg_override="background ${custom_hex}"
+    alacritty_bg_override="[colors.primary]
+background = \"${custom_hex}\""
+  fi
+
+  # ── 1. Ghostty Config ──
+  case "$cur_mode" in
+    opaque)
+      cat > "$GHOSTTY_TOGGLE_CONF" <<EOF
+background-opacity = 1.0
+background-blur = false
+${ghostty_bg_override}
+EOF
+      ;;
+    clear)
+      cat > "$GHOSTTY_TOGGLE_CONF" <<EOF
+background-opacity = ${cur_opacity}
+background-blur = false
+${ghostty_bg_override}
+EOF
+      ;;
+    blur)
+      cat > "$GHOSTTY_TOGGLE_CONF" <<EOF
+background-opacity = ${cur_opacity}
+background-blur = true
+${ghostty_bg_override}
+EOF
+      ;;
+  esac
+
+  # ── 2. Foot Config ──
+  local foot_alpha="1.0"
+  if [[ "$cur_mode" != "opaque" ]]; then
+    foot_alpha="${cur_opacity}"
+  fi
+  cat > "$FOOT_TOGGLE_CONF" <<EOF
+[colors-dark]
+alpha=${foot_alpha}
+${foot_bg_override}
+
+[colors-light]
+alpha=${foot_alpha}
+${foot_bg_override}
+EOF
+  touch "$HOME/.config/foot/foot.ini" 2>/dev/null || true
+
+  # ── 3. Alacritty Config ──
+  local alacritty_alpha="1.0"
+  if [[ "$cur_mode" != "opaque" ]]; then
+    alacritty_alpha="${cur_opacity}"
+  fi
+  cat > "$ALACRITTY_TOGGLE_CONF" <<EOF
+[window]
+opacity = ${alacritty_alpha}
+${alacritty_bg_override}
+EOF
+
+  # ── 4. Kitty Config ──
+  local kitty_alpha="1.0"
+  local kitty_blur="0"
+  if [[ "$cur_mode" == "blur" ]]; then
+    kitty_alpha="${cur_opacity}"
+    kitty_blur="1"
+  elif [[ "$cur_mode" == "clear" ]]; then
+    kitty_alpha="${cur_opacity}"
+    kitty_blur="0"
+  fi
+  cat > "$KITTY_TOGGLE_CONF" <<EOF
+background_opacity ${kitty_alpha}
+background_blur ${kitty_blur}
+${kitty_bg_override}
+EOF
+
+  # ── Live Terminal Retint / Reload ──
+  if pgrep -x ghostty >/dev/null 2>&1; then
+    killall -SIGUSR2 ghostty 2>/dev/null || true
+  fi
+
+  if [[ -n "$custom_hex" ]] && pgrep -x foot >/dev/null 2>&1; then
+    local foot_osc="\033]11;${custom_hex}\007"
+    for foot_pid in $(pgrep -x foot); do
+      for child_pid in $(pgrep -P "$foot_pid" 2>/dev/null || true); do
+        local tty
+        tty=$(readlink "/proc/$child_pid/fd/1" 2>/dev/null || true)
+        [[ "$tty" == /dev/pts/* ]] && printf '%b' "$foot_osc" >"$tty" 2>/dev/null || true
+      done
+    done
+  elif [[ "$cur_bg_color" == "default" ]] && pgrep -x foot >/dev/null 2>&1; then
+    /usr/share/omarchy/bin/omarchy-theme-set-foot 2>/dev/null || true
+  fi
+
+  if pgrep -x kitty >/dev/null 2>&1; then
+    killall -SIGUSR1 kitty 2>/dev/null || true
+  fi
+
+  if [[ -f "$HOME/.config/alacritty/alacritty.toml" ]]; then
+    touch "$HOME/.config/alacritty/alacritty.toml" 2>/dev/null || true
+  fi
+}
+
+write_hypr_config() {
+  local hypr_blur_enabled="true"
+  local hypr_blur_size=$(printf "%.0f" "${BLUR_SIZE:-8}")
+  local hypr_blur_passes=2
+
+  case "$MODE" in
+    opaque)
+      hypr_blur_enabled="false"
+      ;;
+    clear)
+      hypr_blur_enabled="false"
+      ;;
+    blur)
+      hypr_blur_enabled="true"
+      if (( hypr_blur_size >= 12 )); then
+        hypr_blur_passes=3
+      elif (( hypr_blur_size <= 4 )); then
+        hypr_blur_passes=1
+      else
+        hypr_blur_passes=2
+      fi
+      ;;
+  esac
+
+  mkdir -p "$(dirname "$HYPR_BLUR_CONF")" "$(dirname "$HYPR_TOGGLE_CONF")"
+  
+  cat > "$HYPR_BLUR_CONF" <<EOF
+decoration {
+    rounding = 12
+    blur {
+        enabled = ${hypr_blur_enabled}
+        size = ${hypr_blur_size}
+        passes = ${hypr_blur_passes}
+        new_optimizations = true
+        xray = false
+        noise = 0.015
+        contrast = 1.05
+        brightness = 1.05
+        vibrancy = 0.35
+        vibrancy_darkness = 0.1
+        popups = true
+    }
+}
+EOF
+
+  cat > "$HYPR_TOGGLE_CONF" <<EOF
+decoration {
+  blur {
+    enabled = ${hypr_blur_enabled}
+    size = ${hypr_blur_size}
+    passes = ${hypr_blur_passes}
+  }
+}
+EOF
+
+  cat > "$HYPR_TOGGLE_LUA" <<EOF
+hl.config({
+  decoration = {
+    blur = {
+      enabled = ${hypr_blur_enabled},
+      size = $(printf "%.0f" "$hypr_blur_size"),
+      passes = $(printf "%.0f" "$hypr_blur_passes"),
+    },
+  },
+})
+EOF
+
+  if command -v hyprctl >/dev/null 2>&1; then
+    hyprctl keyword decoration:blur:enabled "${hypr_blur_enabled}" >/dev/null 2>&1 || true
+    hyprctl keyword decoration:blur:size "${hypr_blur_size}" >/dev/null 2>&1 || true
+    hyprctl keyword decoration:blur:passes "${hypr_blur_passes}" >/dev/null 2>&1 || true
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
+
+  update_terminals
+}
+
+apply_bar_theme_sync() {
+  local b_alpha="${BAR_OPACITY:-0.15}"
+  local user_shell_toml="$HOME/.config/omarchy/shell.toml"
+  local cur_base="14"
+  if [[ -f "$user_shell_toml" ]]; then
+    cur_base=$(grep -oP 'base-size\s*=\s*\K[0-9]+' "$user_shell_toml" | head -1 || echo "14")
+    [[ -n "$cur_base" ]] || cur_base="14"
+  fi
+
+  save_state
+
+  if [[ "${BAR_PALETTE:-default}" == "default" ]]; then
+    cat > "$user_shell_toml" <<EOF
+[font]
+base-size = ${cur_base}
+
+[bar]
+background-alpha = ${b_alpha}
+
+[controls]
+normal-fill-alpha = ${b_alpha}
+EOF
+  elif [[ "${BAR_PALETTE:-default}" == "wallpaper-auto" ]]; then
+    theme-sync-colors >/dev/null 2>&1 || true
+  else
+    local pal_accent="#38bdf8"
+    local pal_bg="#0c1219"
+    local pal_border="#38bdf8"
+
+    case "${BAR_PALETTE:-default}" in
+      "tokyo-night")      pal_accent="#7aa2f7"; pal_bg="#16161e"; pal_border="#7aa2f7" ;;
+      "catppuccin-mocha") pal_accent="#cba6f7"; pal_bg="#181825"; pal_border="#cba6f7" ;;
+      "nord-polar")       pal_accent="#88c0d0"; pal_bg="#242933"; pal_border="#88c0d0" ;;
+      "gruvbox-dark")     pal_accent="#fabd2f"; pal_bg="#1d2021"; pal_border="#fabd2f" ;;
+      "rose-pine")        pal_accent="#eb6f92"; pal_bg="#191724"; pal_border="#eb6f92" ;;
+      "emerald-dark")     pal_accent="#a6e3a1"; pal_bg="#0a1813"; pal_border="#a6e3a1" ;;
+      "oled-black")       pal_accent="#555555"; pal_bg="#000000"; pal_border="#333333" ;;
+      "vintage-cream")    pal_accent="#d4a373"; pal_bg="#f5f2e9"; pal_border="#d4a373" ;;
+      "milk-white")       pal_accent="#89b4fa"; pal_bg="#ffffff"; pal_border="#89b4fa" ;;
+      "warm-latte")       pal_accent="#df8e1d"; pal_bg="#eff1f5"; pal_border="#df8e1d" ;;
+      "soft-peach")       pal_accent="#e07a5f"; pal_bg="#2e1d21"; pal_border="#e07a5f" ;;
+      "pastel-lavender")  pal_accent="#b5a6ff"; pal_bg="#1e1829"; pal_border="#b5a6ff" ;;
+      "matcha-tea")       pal_accent="#84a98c"; pal_bg="#152119"; pal_border="#84a98c" ;;
+      "amber-gold")       pal_accent="#f59e0b"; pal_bg="#21180b"; pal_border="#f59e0b" ;;
+      "crimson-velvet")   pal_accent="#e63946"; pal_bg="#240c11"; pal_border="#e63946" ;;
+      "midnight-cyan")    pal_accent="#06b6d4"; pal_bg="#081826"; pal_border="#06b6d4" ;;
+      "electric-indigo")  pal_accent="#6366f1"; pal_bg="#13112c"; pal_border="#6366f1" ;;
+    esac
+
+    mkdir -p "$(dirname "$user_shell_toml")"
+    cat > "$user_shell_toml" <<EOF
+[font]
+base-size = ${cur_base}
+
+[bar]
+background = "${pal_bg}"
+background-alpha = ${b_alpha}
+text = "#ffffff"
+active = "${pal_accent}"
+
+[popups]
+background = "${pal_bg}"
+background-alpha = 0.95
+text = "#ffffff"
+border = "${pal_border}"
+border-alpha = 0.85
+
+[controls]
+normal-color = "#ffffff"
+normal-border = "${pal_border}"
+normal-fill-alpha = ${b_alpha}
+normal-border-alpha = 0.40
+hover-cursor-color = "#ffffff"
+hover-cursor-border = "${pal_accent}"
+hover-cursor-fill-alpha = 0.28
+selected-color = "#ffffff"
+selected-border = "${pal_border}"
+selected-fill-alpha = 0.35
+EOF
+  fi
+}
+
+case "${1:-}" in
+  set-mode)
+    MODE="${2:-blur}"
+    save_state
+    write_hypr_config
+    ;;
+  set-blur-size)
+    BLUR_SIZE=$(clamp_num "${2:-8}" 1 30)
+    save_state
+    write_hypr_config
+    ;;
+  set-opacity|set-bg-opacity)
+    BG_OPACITY=$(clamp_num "${2:-0.50}" 0.05 1.0)
+    save_state
+    write_hypr_config
+    ;;
+  set-window-opacity)
+    WINDOW_OPACITY="${2:-solid}"
+    save_state
+    write_hypr_config
+    ;;
+  set-color)
+    BG_COLOR="${2:-default}"
+    save_state
+    write_hypr_config
+    ;;
+  set-bar-palette)
+    BAR_PALETTE="${2:-default}"
+    apply_bar_theme_sync
+    ;;
+  set-bar-opacity)
+    BAR_OPACITY=$(clamp_num "${2:-0.15}" 0.0 1.0)
+    apply_bar_theme_sync
+    ;;
+  get-status)
+    echo "MODE=${MODE:-blur}"
+    echo "BLUR_SIZE=${BLUR_SIZE:-8}"
+    echo "BG_OPACITY=${BG_OPACITY:-0.50}"
+    echo "WINDOW_OPACITY=${WINDOW_OPACITY:-solid}"
+    echo "BG_COLOR=${BG_COLOR:-default}"
+    echo "BAR_PALETTE=${BAR_PALETTE:-default}"
+    echo "BAR_OPACITY=${BAR_OPACITY:-0.15}"
+    ;;
+  *)
+    echo "Usage: $0 {set-mode|set-blur-size|set-bg-opacity|set-window-opacity|set-color|set-bar-palette|set-bar-opacity|get-status}"
+    exit 1
+    ;;
+esac
