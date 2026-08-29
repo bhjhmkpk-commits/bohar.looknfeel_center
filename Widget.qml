@@ -38,6 +38,8 @@ Panel {
   property real   barOpacity:     0.85       // 0.00 to 1.00
   property string wallpaperCycle: "Off"      // Off | 30s | 1m | 5m | 10m | 18m | 30m
   property string barStyle:       "islands"  // islands | bar
+  property int    systemFontSize: Style.font.baseSize || 12 // 8 to 22
+  property int    terminalFontSize: 11 // 8 to 20
   readonly property bool isIslandBar: root.barStyle === "islands" || (root.bar && (root.bar.moduleName === "my_floating_bar" || root.bar.moduleName === "custom.island-bar" || root.bar.moduleName === "bohar.island_bar"))
   readonly property color effectiveForeground: root.bar ? root.bar.foreground : Color.foreground
   readonly property string pluginDir: Qt.resolvedUrl(".").toString().replace(/^file:\/\//, "")
