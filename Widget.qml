@@ -17,13 +17,22 @@ Panel {
   ipcTarget: "looknfeel_center"
 
   implicitWidth: bar ? (bar.vertical ? bar.barSize : stylePill.implicitWidth) : stylePill.implicitWidth
-  implicitHeight: bar ? (bar.vertical ? Style.bar.iconSlot : bar.barSize) : 26
-
-  property string activeTerminal: "ghostty"  // ghostty | foot | alacritty | kitty
+  property string activeTerminal: "foot"     // foot | ghostty | alacritty | kitty
   property string barPalette:     "default"  // default | catppuccin-mocha | tokyo-night | nord-polar ...
-  property string glassMode:      "blur"     // opaque | clear | blur
+  property string glassMode:      "clear"    // opaque | clear | blur
   property int    blurSize:       8          // 4, 8, 12, 16
   property real   bgOpacity:      0.50       // 0.10 to 1.00
+
+  readonly property var footGlassOptions: [
+    { id: "clear",  label: "Clear Glass",  icon: "󰤓" },
+    { id: "opaque", label: "Solid Opaque", icon: "󰝤" }
+  ]
+  readonly property var ghosttyGlassOptions: [
+    { id: "blur",   label: "Frosted Blur", icon: "󰂵" },
+    { id: "clear",  label: "Clear Glass",  icon: "󰤓" },
+    { id: "opaque", label: "Solid Opaque", icon: "󰝤" }
+  ]
+  readonly property var glassOptions: (activeTerminal === "foot") ? footGlassOptions : ghosttyGlassOptions
   property string windowOpacity:  "solid"    // solid | 0.95 | 0.90 | 0.80
   property string customBgColor:  "default"  // default | #000000 | #11111b | #1a1b26 ...
   property real   barOpacity:     0.85       // 0.00 to 1.00
@@ -315,20 +324,9 @@ Panel {
           width: parent.width; spacing: Style.space(6)
 
           Repeater {
-            model: root.activeTerminal === "foot"
-              ? [
-                  { id: "clear",  label: "Clear Glass",  icon: "󰤓" },
-                  { id: "opaque", label: "Solid Opaque", icon: "󰝤" }
-                ]
-              : [
-                  { id: "blur",   label: "Frosted Blur", icon: "󰂵" },
-                  { id: "clear",  label: "Clear Glass",  icon: "󰤓" },
-                  { id: "opaque", label: "Solid Opaque", icon: "󰝤" }
-                ]
+            model: root.glassOptions
             delegate: BorderSurface {
-              width: root.activeTerminal === "foot"
-                ? (parent.width - Style.space(6)) / 2
-                : (parent.width - Style.space(12)) / 3
+              width: (parent.width - Style.space(6 * (root.glassOptions.length - 1))) / root.glassOptions.length
               height: Style.space(30)
               radius: Style.cornerRadius
               color: root.glassMode === modelData.id ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : "transparent"
@@ -355,16 +353,24 @@ Panel {
 
       // ── Glass Opacity Slider ────────────────────────────────────────────────
       Column {
-        width: parent.width; spacing: Style.space(4)
+        width: parent.width; spacing: Style.space(6)
         visible: root.glassMode !== "opaque"
 
         Item {
           width: parent.width; height: Style.space(16)
           Text { text: "Glass Transparency"; font.pixelSize: Style.font.caption; font.bold: true; color: Color.popups.text; anchors.left: parent.left }
-          Text {
-            text: Math.round(root.bgOpacity * 100) + "% Opacity"
-            font.pixelSize: Style.font.caption; color: Color.accent; font.bold: true
+          BorderSurface {
             anchors.right: parent.right
+            height: Style.space(18); radius: height / 2
+            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18)
+            borderSpec: Border.controlSpec("normal", root.bar.foreground, Color.accent)
+            implicitWidth: opacityBadgeText.implicitWidth + Style.space(10)
+            Text {
+              id: opacityBadgeText
+              anchors.centerIn: parent
+              text: Math.round(root.bgOpacity * 100) + "%"
+              font.pixelSize: Style.font.caption - 1; color: Color.accent; font.bold: true
+            }
           }
         }
 
@@ -376,6 +382,41 @@ Panel {
           onReleased: function(v) {
             var val = (Math.round(v * 100) / 100).toFixed(2)
             root.applyCommand("omarchy-blur-opacity set-bg-opacity " + val)
+          }
+        }
+
+        // Quick Preset Opacity Badges
+        Row {
+          width: parent.width; spacing: Style.space(4)
+          Repeater {
+            model: [
+              { val: 0.20, label: "20%" },
+              { val: 0.35, label: "35%" },
+              { val: 0.50, label: "50%" },
+              { val: 0.70, label: "70%" },
+              { val: 0.85, label: "85%" },
+              { val: 1.00, label: "100%" }
+            ]
+            delegate: BorderSurface {
+              width: (parent.width - Style.space(20)) / 6; height: Style.space(22)
+              radius: Style.cornerRadius
+              color: Math.abs(root.bgOpacity - modelData.val) < 0.03 ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : "transparent"
+              borderSpec: Border.controlSpec(Math.abs(root.bgOpacity - modelData.val) < 0.03 ? "selected" : "normal", root.bar.foreground, Color.accent)
+              Text {
+                anchors.centerIn: parent
+                text: modelData.label
+                font.pixelSize: Style.font.caption - 1
+                color: Math.abs(root.bgOpacity - modelData.val) < 0.03 ? Color.accent : Color.muted
+                font.bold: Math.abs(root.bgOpacity - modelData.val) < 0.03
+              }
+              MouseArea {
+                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.bgOpacity = modelData.val
+                  root.applyCommand("omarchy-blur-opacity set-bg-opacity " + modelData.val.toFixed(2))
+                }
+              }
+            }
           }
         }
       }
@@ -617,15 +658,23 @@ Panel {
 
       // ── Bar Island Transparency Level ───────────────────────────────────────
       Column {
-        width: parent.width; spacing: Style.space(4)
+        width: parent.width; spacing: Style.space(6)
 
         Item {
           width: parent.width; height: Style.space(16)
           Text { text: "Shell Bar Island Transparency"; font.pixelSize: Style.font.caption; font.bold: true; color: Color.popups.text; anchors.left: parent.left }
-          Text {
-            text: root.barOpacity === 0 ? "Full Transparent" : (Math.round(root.barOpacity * 100) + "% Opacity")
-            font.pixelSize: Style.font.caption; color: Color.accent; font.bold: true
+          BorderSurface {
             anchors.right: parent.right
+            height: Style.space(18); radius: height / 2
+            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18)
+            borderSpec: Border.controlSpec("normal", root.bar.foreground, Color.accent)
+            implicitWidth: barOpacityBadgeText.implicitWidth + Style.space(10)
+            Text {
+              id: barOpacityBadgeText
+              anchors.centerIn: parent
+              text: root.barOpacity === 0 ? "Full Glass" : (Math.round(root.barOpacity * 100) + "%")
+              font.pixelSize: Style.font.caption - 1; color: Color.accent; font.bold: true
+            }
           }
         }
 
@@ -640,6 +689,41 @@ Panel {
             var val = (Math.round(v * 100) / 100).toFixed(2)
             root.barOpacity = parseFloat(val)
             root.applyCommand("omarchy-blur-opacity set-bar-opacity " + val)
+          }
+        }
+
+        // Quick Preset Bar Opacity Badges
+        Row {
+          width: parent.width; spacing: Style.space(4)
+          Repeater {
+            model: [
+              { val: 0.00, label: "Glass" },
+              { val: 0.25, label: "25%" },
+              { val: 0.50, label: "50%" },
+              { val: 0.75, label: "75%" },
+              { val: 0.85, label: "85%" },
+              { val: 1.00, label: "Solid" }
+            ]
+            delegate: BorderSurface {
+              width: (parent.width - Style.space(20)) / 6; height: Style.space(22)
+              radius: Style.cornerRadius
+              color: Math.abs(root.barOpacity - modelData.val) < 0.03 ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : "transparent"
+              borderSpec: Border.controlSpec(Math.abs(root.barOpacity - modelData.val) < 0.03 ? "selected" : "normal", root.bar.foreground, Color.accent)
+              Text {
+                anchors.centerIn: parent
+                text: modelData.label
+                font.pixelSize: Style.font.caption - 1
+                color: Math.abs(root.barOpacity - modelData.val) < 0.03 ? Color.accent : Color.muted
+                font.bold: Math.abs(root.barOpacity - modelData.val) < 0.03
+              }
+              MouseArea {
+                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.barOpacity = modelData.val
+                  root.applyCommand("omarchy-blur-opacity set-bar-opacity " + modelData.val.toFixed(2))
+                }
+              }
+            }
           }
         }
 
