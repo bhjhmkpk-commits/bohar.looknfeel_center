@@ -39,6 +39,7 @@ Panel {
   property string wallpaperCycle: "Off"      // Off | 30s | 1m | 5m | 10m | 18m | 30m
   property int    systemFontSize: Style.font.baseSize || 12 // 8 to 22
   property int    terminalFontSize: 11 // 8 to 20
+  readonly property color effectiveForeground: root.bar ? root.bar.foreground : Color.foreground
 
   // ── Polling & State Refresh (Zero continuous CPU overhead) ──────────────────
   Timer {
@@ -279,7 +280,7 @@ Panel {
                 : "transparent"
               borderSpec: Border.controlSpec(
                 (root.wallpaperCycle === modelData.id || (root.wallpaperCycle === "" && modelData.id === "off")) ? "selected" : "normal",
-                root.bar.foreground,
+                root.effectiveForeground,
                 Color.accent
               )
 
@@ -330,7 +331,7 @@ Panel {
               height: Style.space(30)
               radius: Style.cornerRadius
               color: root.glassMode === modelData.id ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : "transparent"
-              borderSpec: Border.controlSpec(root.glassMode === modelData.id ? "selected" : "normal", root.bar.foreground, Color.accent)
+              borderSpec: Border.controlSpec(root.glassMode === modelData.id ? "selected" : "normal", root.effectiveForeground, Color.accent)
 
               Row {
                 anchors.centerIn: parent; spacing: Style.space(4)
@@ -363,7 +364,7 @@ Panel {
             anchors.right: parent.right
             height: Style.space(18); radius: height / 2
             color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18)
-            borderSpec: Border.controlSpec("normal", root.bar.foreground, Color.accent)
+            borderSpec: Border.controlSpec("normal", root.effectiveForeground, Color.accent)
             implicitWidth: opacityBadgeText.implicitWidth + Style.space(10)
             Text {
               id: opacityBadgeText
@@ -395,7 +396,7 @@ Panel {
                 : "transparent"
               borderSpec: Border.controlSpec(
                 Math.abs(root.bgOpacity - modelData.val) < 0.05 ? "selected" : "normal",
-                root.bar.foreground,
+                root.effectiveForeground,
                 Color.accent
               )
 
@@ -453,7 +454,7 @@ Panel {
               width: (parent.width - Style.space(18)) / 4; height: Style.space(26)
               radius: Style.cornerRadius
               color: root.blurSize === modelData.size ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : "transparent"
-              borderSpec: Border.controlSpec(root.blurSize === modelData.size ? "selected" : "normal", root.bar.foreground, Color.accent)
+              borderSpec: Border.controlSpec(root.blurSize === modelData.size ? "selected" : "normal", root.effectiveForeground, Color.accent)
 
               Text {
                 anchors.centerIn: parent
@@ -507,7 +508,7 @@ Panel {
               color: modelData.color
               borderSpec: Border.controlSpec(
                 ((modelData.isDefault && root.customBgColor === "default")) || root.customBgColor === modelData.color ? "selected" : "normal",
-                root.bar.foreground,
+                root.effectiveForeground,
                 Color.accent
               )
 
@@ -560,7 +561,7 @@ Panel {
                 : "transparent"
               borderSpec: Border.controlSpec(
                 root.terminalFontSize === modelData ? "selected" : "normal",
-                root.bar.foreground,
+                root.effectiveForeground,
                 Color.accent
               )
 
@@ -635,7 +636,7 @@ Panel {
               color: modelData.color
               borderSpec: Border.controlSpec(
                 root.barPalette === modelData.id ? "selected" : "normal",
-                root.bar.foreground,
+                root.effectiveForeground,
                 modelData.border
               )
 
@@ -674,7 +675,7 @@ Panel {
             anchors.right: parent.right
             height: Style.space(18); radius: height / 2
             color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.18)
-            borderSpec: Border.controlSpec("normal", root.bar.foreground, Color.accent)
+            borderSpec: Border.controlSpec("normal", root.effectiveForeground, Color.accent)
             implicitWidth: barOpacityBadgeText.implicitWidth + Style.space(10)
             Text {
               id: barOpacityBadgeText
@@ -704,7 +705,7 @@ Panel {
                 : "transparent"
               borderSpec: Border.controlSpec(
                 Math.abs(root.barOpacity - modelData.val) < 0.06 ? "selected" : "normal",
-                root.bar.foreground,
+                root.effectiveForeground,
                 Color.accent
               )
 
