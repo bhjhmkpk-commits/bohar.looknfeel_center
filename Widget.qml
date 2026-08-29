@@ -16,7 +16,8 @@ Panel {
   moduleName: "custom.looknfeel-center"
   ipcTarget: "looknfeel_center"
 
-  implicitWidth: bar ? (bar.vertical ? bar.barSize : stylePill.implicitWidth) : stylePill.implicitWidth
+  implicitWidth: bar ? (bar.vertical ? bar.barSize : button.implicitWidth) : button.implicitWidth
+  implicitHeight: bar ? bar.barSize : 26
   property string activeTerminal: "foot"     // foot | ghostty | alacritty | kitty
   property string barPalette:     "default"  // default | catppuccin-mocha | tokyo-night | nord-polar ...
   property string glassMode:      "clear"    // opaque | clear | blur
@@ -160,46 +161,21 @@ Panel {
     { name: "Monokai Obsidian", color: "#191919", isDefault: false, border: "#a6e22e" }
   ]
 
-  // ── Look & Feel Bar Capsule Trigger ─────────────────────────────────────────
-  BorderSurface {
-    id: stylePill
+  // ── Standard Island Bar Button (Matches Volume, Notifications, etc.) ──────
+  BarIconButton {
+    id: button
     anchors.fill: parent
-    radius: height / 2
-    color: root.opened ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22) : Color.bar.background
-    borderSpec: Border.controlSpec(root.opened ? "selected" : "normal", root.barForeground, Color.accent)
-    implicitWidth: styleRow.implicitWidth + Style.space(14)
-
-    RowLayout {
-      id: styleRow
-      anchors.centerIn: parent
-      spacing: Style.space(4)
-
-      Text {
-        text: "󰏘"
-        color: Color.accent
-        font.pixelSize: Style.font.body
-        font.weight: Font.Bold
-      }
-
-      Text {
-        text: "LOOK"
-        color: root.barForeground
-        font.pixelSize: Style.font.caption
-        font.weight: Font.DemiBold
-      }
-    }
-
-    MouseArea {
-      anchors.fill: parent
-      cursorShape: Qt.PointingHandCursor
-      onClicked: root.toggle()
-    }
+    bar: root.bar
+    text: "󰏘"
+    active: root.opened
+    tooltipText: "Look & Feel Studio"
+    onPressed: root.toggle()
   }
 
   // ── Popup Panel ─────────────────────────────────────────────────────────────
   KeyboardPanel {
     id: popup
-    anchorItem: stylePill
+    anchorItem: button
     bar: root.bar
     owner: root
     open: root.opened
