@@ -13,8 +13,8 @@ import qs.Ui
 // ──────────────────────────────────────────────────────────────────────────────
 Panel {
   id: root
-  moduleName: "custom.looknfeel-center"
-  ipcTarget: "looknfeel_center"
+  moduleName: "bohar.looknfeel_center"
+  ipcTarget: "bohar.looknfeel_center"
 
   implicitWidth: bar ? (bar.vertical ? bar.barSize : button.implicitWidth) : button.implicitWidth
   implicitHeight: bar ? bar.barSize : 26

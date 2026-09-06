@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "bohar.looknfeel_center",
-  "name": "Looknfeel Center",
+  "name": "Look & Feel Studio",
   "version": "1.0.0",
   "author": "Bohar",
-  "description": "Custom Bar Widget",
+  "description": "Interactive visual customization drawer for live window opacity, frosted glass blur, UI scaling, font sizes, and wallpaper rotation.",
   "kinds": [
     "bar-widget"
   ],
@@ -12,9 +12,10 @@
     "barWidget": "Widget.qml"
   },
   "barWidget": {
-    "displayName": "Looknfeel Center",
-    "description": "Custom Bar Widget",
-    "category": "Custom",
+    "displayName": "Look & Feel Studio",
+    "description": "Live window opacity, frosted blur, UI scaling, and terminal font sizing",
+    "category": "Appearance",
+    "defaultSection": "right",
     "allowMultiple": false
   }
 }
