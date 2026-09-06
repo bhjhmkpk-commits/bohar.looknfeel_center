@@ -2,7 +2,7 @@
 # Independent Terminal Typography Scaler for Foot, Ghostty, Kitty, Alacritty
 
 
-source ~/.local/lib/omarchy-user-env.sh
+source ~/.local/lib/omarchy-user-env.sh 2>/dev/null || true
 
 set -euo pipefail
 
