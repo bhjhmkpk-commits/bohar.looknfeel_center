@@ -23,15 +23,8 @@ stop_daemon() {
     rm -f "$pid_file" 2>/dev/null || true
   fi
 
-  # Stop any lingering rotation processes
+  # Stop any lingering rotation daemon processes
   pkill -f "omarchy-wallpaper-rotate-daemon" 2>/dev/null || true
-
-  # Also stop legacy user systemd unit if present on this host
-  if command -v systemctl >/dev/null 2>&1; then
-    if systemctl --user is-active --quiet omarchy-wallpaper-daemon.service 2>/dev/null; then
-      systemctl --user stop omarchy-wallpaper-daemon.service >/dev/null 2>&1 || true
-    fi
-  fi
 }
 
 start_daemon() {
