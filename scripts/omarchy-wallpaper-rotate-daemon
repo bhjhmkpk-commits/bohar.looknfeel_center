@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Look & Feel Studio — Universal Wallpaper Rotation Engine
+# Automatically cycles theme backgrounds / wallpapers on any Omarchy desktop.
+# ==============================================================================
+
+set -euo pipefail
+
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-wallpaper"
+interval_file="$state_dir/interval"
+pid_file="$state_dir/daemon.pid"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+mkdir -p "$state_dir"
+
+# Single-instance enforcement: record our PID
+echo "$$" > "$pid_file"
+
+cleanup() {
+  rm -f "$pid_file" 2>/dev/null || true
+  exit 0
+}
+trap cleanup SIGINT SIGTERM EXIT
+
+interval_to_seconds() {
+  case "$1" in
+    30s) echo 30 ;;
+    1m)  echo 60 ;;
+    5m)  echo 300 ;;
+    10m) echo 600 ;;
+    18m) echo 1080 ;;
+    30m) echo 1800 ;;
+    *)   echo 0 ;;
+  esac
+}
+
+trigger_rotation() {
+  # 1. Rotate to next wallpaper
+  if command -v bohar-wallpaper >/dev/null 2>&1; then
+    bohar-wallpaper next >/dev/null 2>&1 || true
+  elif command -v omarchy-theme-bg-next >/dev/null 2>&1; then
+    omarchy-theme-bg-next >/dev/null 2>&1 || true
+  fi
+
+  # 2. Sync dynamic colors if wallpaper-auto is active
+  local cur_palette
+  cur_palette="$(grep -oP '^BAR_PALETTE="\K[^"]+' "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/blur-opacity-state.env" 2>/dev/null || echo "")"
+  if [[ "$cur_palette" == "wallpaper-auto" ]]; then
+    if [[ -x "$script_dir/theme-sync-colors" ]]; then
+      "$script_dir/theme-sync-colors" >/dev/null 2>&1 || true
+    elif command -v theme-sync-colors >/dev/null 2>&1; then
+      theme-sync-colors >/dev/null 2>&1 || true
+    fi
+  fi
+}
+
+while true; do
+  interval="$(cat "$interval_file" 2>/dev/null || echo "off")"
+  seconds="$(interval_to_seconds "$interval")"
+
+  if (( seconds <= 0 )); then
+    break
+  fi
+
+  # Sleep in 1-second ticks to respond immediately if interval changes or is stopped
+  elapsed=0
+  while (( elapsed < seconds )); do
+    sleep 1
+    new_interval="$(cat "$interval_file" 2>/dev/null || echo "off")"
+    if [[ "$new_interval" != "$interval" ]]; then
+      interval="$new_interval"
+      seconds="$(interval_to_seconds "$interval")"
+      elapsed=0
+      if (( seconds <= 0 )); then
+        break 2
+      fi
+    fi
+    ((elapsed += 1))
+  done
+
+  # Verify before cycling
+  check_interval="$(cat "$interval_file" 2>/dev/null || echo "off")"
+  if [[ "$check_interval" != "off" && "$(interval_to_seconds "$check_interval")" -gt 0 ]]; then
+    trigger_rotation
+  fi
+done
+
+rm -f "$pid_file" 2>/dev/null || true

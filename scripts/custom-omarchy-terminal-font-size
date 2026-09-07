@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
+# ==============================================================================
 # Independent Terminal Typography Scaler for Foot, Ghostty, Kitty, Alacritty
-
-
-source ~/.local/lib/omarchy-user-env.sh 2>/dev/null || true
+# ==============================================================================
 
 set -euo pipefail
 
@@ -28,34 +27,47 @@ set_size() {
   echo "$pt" > "$STATE_FILE"
 
   # 1. Foot font
-  if [[ -f ~/.config/foot/foot.ini ]]; then
-    if grep -q "^font=" ~/.config/foot/foot.ini; then
-      sed -i -E "s/^(font=.*:size=)[0-9.]+/\1$pt/" ~/.config/foot/foot.ini
+  if [[ -f "$HOME/.config/foot/foot.ini" ]]; then
+    if grep -q "^[[:space:]]*font=" "$HOME/.config/foot/foot.ini"; then
+      if grep -q ":size=" "$HOME/.config/foot/foot.ini"; then
+        sed -i -E "s/^([[:space:]]*font=.*:size=)[0-9.]+/\1$pt/" "$HOME/.config/foot/foot.ini"
+      else
+        sed -i -E "s/^([[:space:]]*font=.*)/\1:size=$pt/" "$HOME/.config/foot/foot.ini"
+      fi
+    elif grep -q "^\[main\]" "$HOME/.config/foot/foot.ini"; then
+      sed -i -E "/^\[main\]/a font=$mono_family:size=$pt" "$HOME/.config/foot/foot.ini"
     else
-      sed -i -E "/^\[main\]/a font=$mono_family:size=$pt" ~/.config/foot/foot.ini
+      printf "\n[main]\nfont=%s:size=%s\n" "$mono_family" "$pt" >> "$HOME/.config/foot/foot.ini"
     fi
-    touch ~/.config/foot/foot.ini 2>/dev/null || true
+    touch "$HOME/.config/foot/foot.ini" 2>/dev/null || true
   fi
 
-  # 2. Ghostty
-  if [[ -f ~/.config/ghostty/config ]]; then
-    if grep -q "^font-size = " ~/.config/ghostty/config; then
-      sed -i -E "s/^font-size = .*/font-size = $pt/" ~/.config/ghostty/config
+  # 2. Ghostty font
+  if [[ -f "$HOME/.config/ghostty/config" ]]; then
+    if grep -q "^[[:space:]]*font-size[[:space:]]*=" "$HOME/.config/ghostty/config"; then
+      sed -i -E "s/^[[:space:]]*font-size[[:space:]]*=.*/font-size = $pt/" "$HOME/.config/ghostty/config"
     else
-      echo "font-size = $pt" >> ~/.config/ghostty/config
+      echo "font-size = $pt" >> "$HOME/.config/ghostty/config"
     fi
     pkill -SIGUSR2 ghostty 2>/dev/null || true
   fi
 
-  # 3. Kitty
-  if [[ -f ~/.config/kitty/kitty.conf ]]; then
-    sed -i -E "s/^font_size[[:space:]]+.*/font_size $pt.0/" ~/.config/kitty/kitty.conf
+  # 3. Kitty font
+  if [[ -f "$HOME/.config/kitty/kitty.conf" ]]; then
+    if grep -q "^[[:space:]]*font_size" "$HOME/.config/kitty/kitty.conf"; then
+      sed -i -E "s/^[[:space:]]*font_size[[:space:]]+.*/font_size $pt.0/" "$HOME/.config/kitty/kitty.conf"
+    else
+      echo "font_size $pt.0" >> "$HOME/.config/kitty/kitty.conf"
+    fi
     pkill -USR1 kitty 2>/dev/null || true
   fi
 
-  # 4. Alacritty
-  if [[ -f ~/.config/alacritty/alacritty.toml ]]; then
-    sed -i -E "s/^size[[:space:]]*=.*/size = $pt/" ~/.config/alacritty/alacritty.toml
+  # 4. Alacritty font
+  if [[ -f "$HOME/.config/alacritty/alacritty.toml" ]]; then
+    if grep -q "^[[:space:]]*size[[:space:]]*=" "$HOME/.config/alacritty/alacritty.toml"; then
+      sed -i -E "s/^[[:space:]]*size[[:space:]]*=.*/size = $pt/" "$HOME/.config/alacritty/alacritty.toml"
+    fi
+    touch "$HOME/.config/alacritty/alacritty.toml" 2>/dev/null || true
   fi
 
   echo "Set terminal font size to ${pt}pt"
