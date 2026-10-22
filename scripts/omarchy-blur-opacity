@@ -442,6 +442,9 @@ case "${1:-}" in
     BAR_OPACITY=$(clamp_num "${2:-0.15}" 0.0 1.0)
     apply_bar_theme_sync
     ;;
+  reapply|restore)
+    write_hypr_config
+    ;;
   get-status)
     echo "MODE=${MODE:-blur}"
     echo "BLUR_SIZE=${BLUR_SIZE:-8}"
