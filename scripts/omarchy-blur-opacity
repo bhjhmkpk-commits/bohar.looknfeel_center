@@ -133,16 +133,23 @@ EOF
 
   # ── 2. Foot Config ──
   local foot_alpha="1.0"
-  if [[ "$cur_mode" != "opaque" ]]; then
+  local foot_blur="no"
+  if [[ "$cur_mode" == "blur" ]]; then
     foot_alpha="${cur_opacity}"
+    foot_blur="yes"
+  elif [[ "$cur_mode" == "clear" ]]; then
+    foot_alpha="${cur_opacity}"
+    foot_blur="no"
   fi
   cat > "$FOOT_TOGGLE_CONF" <<EOF
 [colors-dark]
 alpha=${foot_alpha}
+blur=${foot_blur}
 ${foot_bg_override}
 
 [colors-light]
 alpha=${foot_alpha}
+blur=${foot_blur}
 ${foot_bg_override}
 EOF
   touch "$HOME/.config/foot/foot.ini" 2>/dev/null || true
@@ -176,6 +183,7 @@ EOF
 
   # ── Live Terminal Retint / Reload ──
   if pgrep -x ghostty >/dev/null 2>&1; then
+    touch "$HOME/.config/ghostty/config" 2>/dev/null || true
     killall -SIGUSR2 ghostty 2>/dev/null || true
   fi
 
@@ -286,17 +294,15 @@ hl.config({
       enabled = ${hypr_blur_enabled},
       size = $(printf "%.0f" "$hypr_blur_size"),
       passes = $(printf "%.0f" "$hypr_blur_passes"),
+      ignore_opacity = true,
+      new_optimizations = true,
     },
   },
 })
 EOF
 
   if command -v hyprctl >/dev/null 2>&1; then
-    hyprctl keyword decoration:blur:enabled "${hypr_blur_enabled}" >/dev/null 2>&1 || true
-    hyprctl keyword decoration:blur:size "${hypr_blur_size}" >/dev/null 2>&1 || true
-    hyprctl keyword decoration:blur:passes "${hypr_blur_passes}" >/dev/null 2>&1 || true
-    hyprctl keyword decoration:active_opacity "${win_active}" >/dev/null 2>&1 || true
-    hyprctl keyword decoration:inactive_opacity "${win_inactive}" >/dev/null 2>&1 || true
+    hyprctl eval "hl.config({ decoration = { active_opacity = ${win_active}, inactive_opacity = ${win_inactive}, blur = { enabled = ${hypr_blur_enabled}, size = ${hypr_blur_size}, passes = ${hypr_blur_passes}, ignore_opacity = true, new_optimizations = true } } })" >/dev/null 2>&1 || true
     hyprctl reload >/dev/null 2>&1 || true
   fi
 
