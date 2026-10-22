@@ -630,7 +630,7 @@ fi
 
 # ── 8. Instant Hyprland Active Border Accent ────────────────────────────────
 if command -v hyprctl >/dev/null 2>&1; then
-  hyprctl keyword general:col.active_border "rgb(${css_accent})" >/dev/null 2>&1 || true
+  hyprctl eval "hl.config({ general = { col = { active_border = 'rgb(${css_accent})' } } })" >/dev/null 2>&1 || true
 fi
 
 # ── 9. Hot-Reload Quickshell Theme & Island Colors ──────────────────────────
